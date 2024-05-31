@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_habittracking_app/components/add_habit_page.dart';
+import 'package:intl/intl.dart';
 
 import '../components/habit_drawer.dart';
 import '../components/habit_tile.dart';
@@ -13,71 +15,64 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  List<Widget> habitTiles = []; // 습관 타일 목록을 관리하는 리스트
+  List<Map<String, dynamic>> habits = []; // 습관 타일 목록을 관리하는 리스트
   bool habitCompleted = false;
 
   @override
   void initState() {
     super.initState();
     // 초기 습관 타일 추가
-    habitTiles.add(createHabitTile("아침 : 명상하기"));
+    habits.add({
+      "name": "아침 : 명상하기",
+      "completed": false,
+    });
   }
 
-  Widget createHabitTile(String habitName) {
+  Widget createHabitTile(Map<String, dynamic> habit) {
+    // 습관 타일 생성 함수
     return HabitTile(
-      habitName: habitName,
-      habitCompleted: habitCompleted,
+      habitName: habit['name'],
+      habitCompleted: habit['completed'],
+      startTime: habit['startTime'] ?? '__', // null 체크
+      endTime: habit['endTime'] ?? '__', // null 체크
       onTap: (value) {
         setState(() {
-          habitCompleted = !habitCompleted;
+          habit['completed'] = !habit['completed']; // 습관 완료 상태 토글
         });
-        print("$habitName 체크박스 클릭");
+        print("${habit['name']} 체크박스 클릭"); // 콘솔에 로그 출력
+      },
+      onDelete: () {
+        setState(() {
+          habits.remove(habit);
+        });
+        print("습관삭제");
       },
     );
   }
 
-  void addHabitTile(String habitName) {
+  void addHabitTile(String habitName, DateTime startTime, DateTime endTime) {
+    // 새 습관 타일 추가 함수
     setState(() {
-      habitTiles.add(createHabitTile(habitName));
+      habits.add({
+        "name": habitName,
+        "completed": false,
+        "startTime": DateFormat('yyyy-MM-dd - kk:mm').format(startTime),
+        "endTime": DateFormat('yyyy-MM-dd - kk:mm').format(endTime)
+      }); // 새 습관을 리스트에 추가
     });
   }
 
-  Future<void> showAddHabitDialog() async {
-    TextEditingController habitController = TextEditingController();
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: false, // 다이얼로그 바깥을 터치해도 닫히지 않음
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('새 습관 추가'),
-          content: TextField(
-            controller: habitController,
-            decoration: InputDecoration(hintText: "습관 이름을 입력하세요"),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('취소'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: Text('추가'),
-              onPressed: () {
-                if (habitController.text.isNotEmpty) {
-                  addHabitTile(habitController.text);
-                  Navigator.of(context).pop();
-                }
-              },
-            ),
-          ],
-        );
-      },
+  void navigateToAddHabitPage() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => AddHabitPage(onAddHabit: addHabitTile),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    // 위젯 빌드 함수
     return Scaffold(
       backgroundColor: Color.fromARGB(255, 139, 184, 255),
       appBar: AppBar(
@@ -87,25 +82,19 @@ class _HomePageState extends State<HomePage> {
             Text("Day Routine Tracking"),
             Spacer(),
             Icon(
-              Icons.calendar_month,
+              Icons.share,
               size: 30,
             )
           ],
         ),
       ),
-      drawer: HabitDrawer(),
+      drawer: HabitDrawer(), // 습관 관리용 드로어 위젯
       body: ListView(
-        children: [
-          ...habitTiles, // 습관 타일 목록을 확장하여 추가
-          GestureDetector(
-            onTap: showAddHabitDialog, // 아이콘 클릭 시 새 습관 타일 추가
-            child: Icon(
-              Icons.add_box_rounded,
-              size: 40,
-              color: Colors.white,
-            ),
-          ),
-        ],
+          children: habits.map((habit) => createHabitTile(habit)).toList()),
+      floatingActionButton: FloatingActionButton(
+        onPressed: navigateToAddHabitPage,
+        child: Icon(Icons.add),
+        tooltip: '습관 추가',
       ),
     );
   }
