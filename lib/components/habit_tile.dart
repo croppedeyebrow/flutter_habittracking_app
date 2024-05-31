@@ -9,6 +9,7 @@ class HabitTile extends StatefulWidget {
     required this.onDelete,
     required this.startTime,
     required this.endTime,
+    required this.category,
   });
 
   final String habitName;
@@ -17,6 +18,7 @@ class HabitTile extends StatefulWidget {
   final VoidCallback onDelete;
   final String startTime; // 시작 시간
   final String endTime;
+  final String category;
 
   @override
   State<HabitTile> createState() => _HabitTileState();
@@ -88,6 +90,11 @@ class _HabitTileState extends State<HabitTile> {
                   ],
                 ),
               ],
+            ),
+            //카테고리 표시
+            Text(
+              widget.category,
+              style: TextStyle(fontSize: 8),
             ),
             //습관 제거 버튼.
             IconButton(onPressed: widget.onDelete, icon: Icon(Icons.delete))

@@ -23,7 +23,7 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     // 초기 습관 타일 추가
     habits.add({
-      "name": "아침 : 명상하기",
+      "name": "Ex)아침 : 명상하기",
       "completed": false,
     });
   }
@@ -35,6 +35,7 @@ class _HomePageState extends State<HomePage> {
       habitCompleted: habit['completed'],
       startTime: habit['startTime'] ?? '__', // null 체크
       endTime: habit['endTime'] ?? '__', // null 체크
+      category: habit['category'] ?? '__', // null 체크
       onTap: (value) {
         setState(() {
           habit['completed'] = !habit['completed']; // 습관 완료 상태 토글
@@ -50,14 +51,16 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void addHabitTile(String habitName, DateTime startTime, DateTime endTime) {
+  void addHabitTile(String habitName, DateTime startTime, DateTime endTime,
+      String? category) {
     // 새 습관 타일 추가 함수
     setState(() {
       habits.add({
         "name": habitName,
         "completed": false,
         "startTime": DateFormat('yyyy-MM-dd - kk:mm').format(startTime),
-        "endTime": DateFormat('yyyy-MM-dd - kk:mm').format(endTime)
+        "endTime": DateFormat('yyyy-MM-dd - kk:mm').format(endTime),
+        "category": category,
       }); // 새 습관을 리스트에 추가
     });
   }
@@ -92,6 +95,11 @@ class _HomePageState extends State<HomePage> {
       body: ListView(
           children: habits.map((habit) => createHabitTile(habit)).toList()),
       floatingActionButton: FloatingActionButton(
+        shape: BeveledRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+        ),
+        backgroundColor: Colors.white,
+        foregroundColor: Color.fromARGB(255, 139, 184, 255),
         onPressed: navigateToAddHabitPage,
         child: Icon(Icons.add),
         tooltip: '습관 추가',

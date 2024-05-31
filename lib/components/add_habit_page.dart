@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class AddHabitPage extends StatefulWidget {
-  final Function(String, DateTime, DateTime) onAddHabit;
+  final Function(String, DateTime, DateTime, String?) onAddHabit;
 
   const AddHabitPage({Key? key, required this.onAddHabit}) : super(key: key);
 
@@ -14,14 +14,19 @@ class _AddHabitPageState extends State<AddHabitPage> {
   final TextEditingController _habitController = TextEditingController();
   DateTime? _startDateTime; //시작 시일 선택
   DateTime? _endDateTime; //종료 시일 선택
+  String? _selectedCategory; //선태된 카테고리 저장
+  List<String> _categories = ['운동', '자기계발', '이너피스', '기타'];
 
   Future<void> _selectDateTime(BuildContext context, bool isStartTime) async {
     final DateTime now = DateTime.now();
+    final DateTime initialDate = now.isAfter(DateTime(now.year, 12, 31))
+        ? DateTime(now.year + 1, 1, 1)
+        : now;
     final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: now,
-      firstDate: DateTime(now.year - 5),
-      lastDate: DateTime(now.year + 5),
+      initialDate: initialDate,
+      firstDate: DateTime(now.year),
+      lastDate: DateTime(now.year, 12, 31),
     );
     if (pickedDate != null) {
       final TimeOfDay? pickedTime = await showTimePicker(
@@ -57,14 +62,17 @@ class _AddHabitPageState extends State<AddHabitPage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: <Widget>[
+            //습관 내용 입력
             TextField(
               controller: _habitController,
               decoration: InputDecoration(
                 labelText: '추가할 습관',
-                hintText: '습관 이름을 입력하세요',
+                hintText: '추가할 습관을 입력하세요',
               ),
             ),
             SizedBox(height: 20),
+
+            //시일선택
             ListTile(
               title: Text('습관을 시작할 시간'),
               subtitle: Text(_startDateTime != null
@@ -83,6 +91,39 @@ class _AddHabitPageState extends State<AddHabitPage> {
                 _selectDateTime(context, false);
               },
             ),
+
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Text('카테고리:'),
+                  ),
+                  Expanded(
+                    child: DropdownButton<String>(
+                      value: _selectedCategory,
+                      hint: Text('선택하세요'),
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          _selectedCategory = newValue;
+                        });
+                      },
+                      items: _categories
+                          .map<DropdownMenuItem<String>>((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                      isExpanded: true,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            //저장,취소 버튼
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -92,7 +133,7 @@ class _AddHabitPageState extends State<AddHabitPage> {
                         _startDateTime != null &&
                         _endDateTime != null) {
                       widget.onAddHabit(_habitController.text, _startDateTime!,
-                          _endDateTime!);
+                          _endDateTime!, _selectedCategory);
                       Navigator.of(context).pop();
                     }
                   },
