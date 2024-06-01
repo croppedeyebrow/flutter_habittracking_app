@@ -1,11 +1,11 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
-import 'package:flutter_habittracking_app/components/add_habit_page.dart';
-import 'package:intl/intl.dart';
-
-import '../components/habit_drawer.dart';
+import 'package:hive/hive.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import '../models/habit.dart'; // Habit 모델 import
 import '../components/habit_tile.dart';
+import '../components/habit_drawer.dart';
+import '../components/add_habit_page.dart';
+import '../components/setting_habit_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -15,93 +15,100 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  List<Map<String, dynamic>> habits = []; // 습관 타일 목록을 관리하는 리스트
-  bool habitCompleted = false;
+  Box<Habit>? habitsBox;
 
   @override
   void initState() {
     super.initState();
-    // 초기 습관 타일 추가
-    habits.add({
-      "name": "Ex)아침 : 명상하기",
-      "completed": false,
+    initializeHabitsBox();
+  }
+
+  Future<void> initializeHabitsBox() async {
+    var box = await Hive.openBox<Habit>('habits');
+    setState(() {
+      habitsBox = box;
     });
   }
 
-  Widget createHabitTile(Map<String, dynamic> habit) {
-    // 습관 타일 생성 함수
+  @override
+  void dispose() {
+    Hive.close();
+    super.dispose();
+  }
+
+  Widget createHabitTile(Habit habit) {
     return HabitTile(
-      habitName: habit['name'],
-      habitCompleted: habit['completed'],
-      startTime: habit['startTime'] ?? '__', // null 체크
-      endTime: habit['endTime'] ?? '__', // null 체크
-      category: habit['category'] ?? '__', // null 체크
-      onTap: (value) {
+      habit: habit,
+      habitCompleted: habit.completed,
+      startTime: habit.startTime.toString(), // DateTime을 String으로 변환
+      endTime: habit.endTime.toString(), // DateTime을 String으로 변환
+      category: habit.category,
+      onTap: () {
         setState(() {
-          habit['completed'] = !habit['completed']; // 습관 완료 상태 토글
+          habit.completed = !habit.completed;
+          habit.save();
         });
-        print("${habit['name']} 체크박스 클릭"); // 콘솔에 로그 출력
+      },
+      onSetting: () async {
+        final updatedHabit = await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => SettingHabitPage(
+                habit: habit,
+                onUpdateHabit: (updatedHabit) {
+                  setState(() {
+                    habitsBox?.put(habit.key, updatedHabit); // 습관 업데이트
+                    habit = updatedHabit;
+                    habit.save();
+                  });
+                }),
+          ),
+        );
+        if (updatedHabit != null) {
+          setState(() {
+            habitsBox?.put(habit.key, updatedHabit); // 습관 업데이트
+          });
+        }
       },
       onDelete: () {
         setState(() {
-          habits.remove(habit);
+          habit.delete();
         });
-        print("습관삭제");
       },
     );
-  }
-
-  void addHabitTile(String habitName, DateTime startTime, DateTime endTime,
-      String? category) {
-    // 새 습관 타일 추가 함수
-    setState(() {
-      habits.add({
-        "name": habitName,
-        "completed": false,
-        "startTime": DateFormat('yyyy-MM-dd - kk:mm').format(startTime),
-        "endTime": DateFormat('yyyy-MM-dd - kk:mm').format(endTime),
-        "category": category,
-      }); // 새 습관을 리스트에 추가
-    });
   }
 
   void navigateToAddHabitPage() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => AddHabitPage(onAddHabit: addHabitTile),
+        builder: (context) => AddHabitPage(onAddHabit: (Habit newHabit) {
+          habitsBox?.add(newHabit);
+        }),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    // 위젯 빌드 함수
     return Scaffold(
-      backgroundColor: Color.fromARGB(255, 139, 184, 255),
       appBar: AppBar(
-        title: const Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            Text("Day Routine Tracking"),
-            Spacer(),
-            Icon(
-              Icons.share,
-              size: 30,
-            )
-          ],
-        ),
+        title: const Text("Day Routine Tracking"),
       ),
-      drawer: HabitDrawer(), // 습관 관리용 드로어 위젯
-      body: ListView(
-          children: habits.map((habit) => createHabitTile(habit)).toList()),
+      drawer: HabitDrawer(),
+      body: habitsBox == null
+          ? Center(child: CircularProgressIndicator())
+          : ValueListenableBuilder(
+              valueListenable: habitsBox!.listenable(),
+              builder: (context, Box<Habit> box, _) {
+                return ListView(
+                  children: box.values
+                      .map((habit) => createHabitTile(habit))
+                      .toList(),
+                );
+              },
+            ),
       floatingActionButton: FloatingActionButton(
-        shape: BeveledRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-        ),
-        backgroundColor: Colors.white,
-        foregroundColor: Color.fromARGB(255, 139, 184, 255),
         onPressed: navigateToAddHabitPage,
-        child: Icon(Icons.add),
+        child: const Icon(Icons.add),
         tooltip: '습관 추가',
       ),
     );

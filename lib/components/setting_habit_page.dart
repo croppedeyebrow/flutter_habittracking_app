@@ -1,29 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:hive/hive.dart';
+
 import '../models/habit.dart'; // Habit 모델 import
 
-class AddHabitPage extends StatefulWidget {
-  final Function(Habit) onAddHabit;
+class SettingHabitPage extends StatefulWidget {
+  final Habit habit;
+  final Function(Habit) onUpdateHabit;
 
-  const AddHabitPage({Key? key, required this.onAddHabit}) : super(key: key);
+  const SettingHabitPage(
+      {Key? key, required this.habit, required this.onUpdateHabit})
+      : super(key: key);
 
   @override
-  _AddHabitPageState createState() => _AddHabitPageState();
+  _SettingHabitPageState createState() => _SettingHabitPageState();
 }
 
-class _AddHabitPageState extends State<AddHabitPage> {
+class _SettingHabitPageState extends State<SettingHabitPage> {
   final TextEditingController _habitController = TextEditingController();
   DateTime? _startDateTime;
   DateTime? _endDateTime;
   String? _selectedCategory;
   List<String> _categories = ['운동', '자기계발', '이너피스', '기타'];
-  late Box<Habit> habitsBox;
 
   @override
   void initState() {
     super.initState();
-    habitsBox = Hive.box<Habit>('habits');
+    _habitController.text = widget.habit.name;
+    _startDateTime =
+        DateFormat('yyyy-MM-dd - kk:mm').parse(widget.habit.startTime);
+    _endDateTime = DateFormat('yyyy-MM-dd - kk:mm').parse(widget.habit.endTime);
+    _selectedCategory = widget.habit.category;
   }
 
   Future<void> _selectDateTime(BuildContext context, bool isStartTime) async {
@@ -61,27 +67,11 @@ class _AddHabitPageState extends State<AddHabitPage> {
     }
   }
 
-  void _addHabit() {
-    final String habitName = _habitController.text;
-    if (habitName.isNotEmpty &&
-        _startDateTime != null &&
-        _endDateTime != null) {
-      final newHabit = Habit(
-        name: habitName,
-        startTime: DateFormat('yyyy-MM-dd - kk:mm').format(_startDateTime!),
-        endTime: DateFormat('yyyy-MM-dd - kk:mm').format(_endDateTime!),
-        category: _selectedCategory,
-      );
-      habitsBox.add(newHabit);
-      Navigator.of(context).pop();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('새 습관 추가'),
+        title: Text('습관 수정'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -90,8 +80,8 @@ class _AddHabitPageState extends State<AddHabitPage> {
             TextField(
               controller: _habitController,
               decoration: InputDecoration(
-                labelText: '추가할 습관',
-                hintText: '추가할 습관을 입력하세요',
+                labelText: '수정하고 싶은 습관',
+                hintText: '수정할 습관을 입력하세요',
               ),
             ),
             SizedBox(height: 20),
@@ -100,14 +90,18 @@ class _AddHabitPageState extends State<AddHabitPage> {
               subtitle: Text(_startDateTime != null
                   ? DateFormat('yyyy-MM-dd HH:mm').format(_startDateTime!)
                   : '시작 날짜 및 시간을 선택하세요'),
-              onTap: () => _selectDateTime(context, true),
+              onTap: () {
+                _selectDateTime(context, true);
+              },
             ),
             ListTile(
               title: Text('습관을 끝낼 시간'),
               subtitle: Text(_endDateTime != null
                   ? DateFormat('yyyy-MM-dd HH:mm').format(_endDateTime!)
                   : '종료 날짜 및 시간을 선택하세요'),
-              onTap: () => _selectDateTime(context, false),
+              onTap: () {
+                _selectDateTime(context, false);
+              },
             ),
             Padding(
               padding: const EdgeInsets.all(16.0),
@@ -143,12 +137,27 @@ class _AddHabitPageState extends State<AddHabitPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 ElevatedButton(
-                  onPressed: _addHabit,
-                  child: Text('추가'),
+                  onPressed: () {
+                    if (_habitController.text.isNotEmpty &&
+                        _startDateTime != null &&
+                        _endDateTime != null) {
+                      widget.habit.name = _habitController.text;
+                      widget.habit.startTime = DateFormat('yyyy-MM-dd - kk:mm')
+                          .format(_startDateTime!);
+                      widget.habit.endTime = DateFormat('yyyy-MM-dd - kk:mm')
+                          .format(_endDateTime!);
+                      widget.habit.category = _selectedCategory;
+                      widget.habit.save();
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  child: Text('수정'),
                 ),
                 SizedBox(width: 16),
                 ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
                   child: Text('취소'),
                 ),
               ],
