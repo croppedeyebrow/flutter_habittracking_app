@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import '../models/habit.dart'; // Habit 모델 import
+import '../models/habit.dart';
 import '../components/habit_tile.dart';
 import '../components/habit_drawer.dart';
 import '../components/add_habit_page.dart';
@@ -24,15 +24,17 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> initializeHabitsBox() async {
-    var box = await Hive.openBox<Habit>('habits');
-    setState(() {
-      habitsBox = box;
-    });
+    var newBox = await Hive.openBox<Habit>('habits');
+    if (mounted) {
+      setState(() {
+        habitsBox = newBox;
+      });
+    }
   }
 
   @override
   void dispose() {
-    Hive.close();
+    habitsBox?.close();
     super.dispose();
   }
 
@@ -40,41 +42,46 @@ class _HomePageState extends State<HomePage> {
     return HabitTile(
       habit: habit,
       habitCompleted: habit.completed,
-      startTime: habit.startTime.toString(), // DateTime을 String으로 변환
-      endTime: habit.endTime.toString(), // DateTime을 String으로 변환
+      startTime: habit.startTime.toString(),
+      endTime: habit.endTime.toString(),
       category: habit.category,
-      onTap: () {
-        setState(() {
-          habit.completed = !habit.completed;
-          habit.save();
-        });
-      },
-      onSetting: () async {
-        final updatedHabit = await Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => SettingHabitPage(
-                habit: habit,
-                onUpdateHabit: (updatedHabit) {
-                  setState(() {
-                    habitsBox?.put(habit.key, updatedHabit); // 습관 업데이트
-                    habit = updatedHabit;
-                    habit.save();
-                  });
-                }),
-          ),
-        );
-        if (updatedHabit != null) {
-          setState(() {
-            habitsBox?.put(habit.key, updatedHabit); // 습관 업데이트
-          });
-        }
-      },
-      onDelete: () {
-        setState(() {
-          habit.delete();
-        });
-      },
+      onTap: () => toggleHabitCompletion(habit),
+      onSetting: () => navigateToSettingHabitPage(habit),
+      onDelete: () => deleteHabit(habit),
     );
+  }
+
+  void toggleHabitCompletion(Habit habit) {
+    setState(() {
+      habit.completed = !habit.completed;
+      habit.save();
+    });
+  }
+
+  Future<void> navigateToSettingHabitPage(Habit habit) async {
+    final updatedHabit = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => SettingHabitPage(
+          habit: habit,
+          onUpdateHabit: (updatedHabit) {
+            setState(() {
+              habitsBox?.put(habit.key, updatedHabit);
+            });
+          },
+        ),
+      ),
+    );
+    if (updatedHabit != null) {
+      setState(() {
+        habitsBox?.put(habit.key, updatedHabit);
+      });
+    }
+  }
+
+  void deleteHabit(Habit habit) {
+    setState(() {
+      habit.delete();
+    });
   }
 
   void navigateToAddHabitPage() {
@@ -99,10 +106,13 @@ class _HomePageState extends State<HomePage> {
           : ValueListenableBuilder(
               valueListenable: habitsBox!.listenable(),
               builder: (context, Box<Habit> box, _) {
-                return ListView(
-                  children: box.values
-                      .map((habit) => createHabitTile(habit))
-                      .toList(),
+                return ListView.builder(
+                  itemCount: box.values.length,
+                  itemBuilder: (context, index) {
+                    final habit = box.values.elementAt(index);
+                    return createHabitTile(habit);
+                  },
+                  itemExtent: 100.0,
                 );
               },
             ),
